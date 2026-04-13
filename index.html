@@ -2,116 +2,236 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Python単語トレーニング</title>
+<title>Python単語ゲーム</title>
+
 <style>
 body {
-  font-family: sans-serif;
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: linear-gradient(135deg, #1e1e2f, #2a2a40);
+  color: white;
+  transition: 0.3s;
+}
+
+.container {
+  max-width: 900px;
+  margin: 50px auto;
   text-align: center;
-  padding: 40px;
 }
+
 .card {
-  font-size: 32px;
-  margin: 40px 0;
+  background: #2f2f4f;
+  padding: 40px;
+  border-radius: 15px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.5);
 }
+
+.word {
+  font-size: 42px;
+  margin-bottom: 10px;
+}
+
+.read {
+  font-size: 18px;
+  color: #aaa;
+  margin-bottom: 20px;
+}
+
 .answer {
-  font-size: 24px;
-  color: green;
+  font-size: 22px;
+  color: #ccc;
   display: none;
 }
+
 button {
-  font-size: 18px;
+  padding: 12px 20px;
   margin: 10px;
-  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.show { background: #3498db; color: white; }
+.correct { background: #2ecc71; }
+.wrong { background: #e74c3c; }
+.switch { background: #f1c40f; color: black; }
+
+.reviewCount {
+  margin-top: 15px;
+  font-size: 18px;
 }
 </style>
 </head>
+
 <body>
 
-<h1>Python単語トレーニング</h1>
+<div class="container">
+  <h1 id="modeTitle">通常モード</h1>
+  <button class="switch" onclick="toggleMode()">モード切替</button>
 
-<div class="card" id="question"></div>
-<div class="answer" id="answer"></div>
+  <div class="card">
+    <div class="word" id="word"></div>
+    <div class="read" id="read"></div>
+    <div class="answer" id="answer"></div>
 
-<button onclick="showAnswer()">答えを見る</button><br>
+    <button class="show" onclick="showAnswer()">答えを見る</button><br>
 
-<div id="judgeButtons" style="display:none;">
-  <button onclick="mark(true)">〇 正解</button>
-  <button onclick="mark(false)">✕ 間違い</button>
+    <button class="correct" onclick="mark(true)">〇 正解</button>
+    <button class="wrong" onclick="mark(false)">✕ 間違い</button>
+  </div>
+
+  <div class="reviewCount">
+    復習リスト：<span id="reviewCount">0</span>
+  </div>
 </div>
 
-<br>
-<button onclick="nextQuestion()">次へ</button>
-<button onclick="reviewMode()">復習モード</button>
-
 <script>
+// =========================
+// 単語データ
+// =========================
 const words = [
-  {q:"print（プリント）", a:"表示する"},
-  {q:"input（インプット）", a:"入力する"},
-  {q:"int（イント）", a:"数字にする"},
-  {q:"str（ストリング）", a:"文字にする"},
-  {q:"float（フロート）", a:"小数にする"},
-  {q:"len（レン）", a:"長さを数える"},
-  {q:"range（レンジ）", a:"範囲を作る"},
-  {q:"for（フォー）", a:"くりかえし"},
-  {q:"if（イフ）", a:"もし"},
-  {q:"elif（エリフ）", a:"それ以外でもし"},
-  {q:"else（エルス）", a:"それ以外"},
-  {q:"break（ブレイク）", a:"ループ終了"},
-  {q:"continue（コンティニュー）", a:"次へスキップ"},
-  {q:"def（デフ）", a:"関数を作る"},
-  {q:"return（リターン）", a:"戻す"}
+  {q:"print", r:"プリント", a:"表示する"},
+  {q:"if", r:"イフ", a:"もし〜なら"},
+  {q:"elif", r:"エリフ", a:"それ以外でもし"},
+  {q:"else", r:"エルス", a:"それ以外"},
+  {q:"for", r:"フォー", a:"くりかえし"},
+  {q:"while", r:"ワイル", a:"〜の間くりかえす"},
+  {q:"break", r:"ブレイク", a:"ループを止める"},
+  {q:"continue", r:"コンティニュー", a:"次へ進む"},
+  {q:"def", r:"デフ", a:"関数を作る"},
+  {q:"return", r:"リターン", a:"値を返す"},
+  {q:"import", r:"インポート", a:"読み込む"},
+  {q:"from", r:"フロム", a:"〜から"},
+  {q:"as", r:"アズ", a:"別名で"},
+  {q:"class", r:"クラス", a:"クラス"},
+  {q:"try", r:"トライ", a:"試す"},
+  {q:"except", r:"エクセプト", a:"エラー処理"},
+  {q:"finally", r:"ファイナリー", a:"最後に必ず実行"},
+  {q:"with", r:"ウィズ", a:"〜と一緒に処理"},
+  {q:"open", r:"オープン", a:"ファイルを開く"},
+  {q:"range", r:"レンジ", a:"範囲"},
+  {q:"len", r:"レン", a:"長さ"},
+  {q:"input", r:"インプット", a:"入力する"},
+  {q:"int", r:"イント", a:"整数に変換"},
+  {q:"str", r:"ストリング", a:"文字列に変換"},
+  {q:"float", r:"フロート", a:"小数に変換"},
+  {q:"list", r:"リスト", a:"リスト"},
+  {q:"dict", r:"ディクト", a:"辞書"},
+  {q:"set", r:"セット", a:"集合"},
+  {q:"tuple", r:"タプル", a:"変更不可リスト"}
 ];
 
-let current = 0;
-let mistakes = [];
-let review = false;
+// =========================
+// 状態
+// =========================
+let reviewMode = false;
+let reviewList = [];
 
-function showQuestion() {
-  document.getElementById("question").innerText = words[current].q;
-  document.getElementById("answer").style.display = "none";
-  document.getElementById("judgeButtons").style.display = "none";
-}
+let currentIndex = 0;
+let prevIndex = -1;
 
-function showAnswer() {
-  document.getElementById("answer").innerText = words[current].a;
-  document.getElementById("answer").style.display = "block";
-  document.getElementById("judgeButtons").style.display = "block";
-}
+// =========================
+// 音
+// =========================
+const correctSound = new Audio("correct.mp3");
+const wrongSound = new Audio("wrong.mp3");
+const bgm = new Audio("bgm.mp3");
+bgm.loop = true;
 
-function mark(correct) {
-  if (!correct) {
-    mistakes.push(words[current]);
-  }
-  nextQuestion();
-}
+document.body.addEventListener("click", () => {
+  if (bgm.paused) bgm.play();
+}, { once:true });
 
-function nextQuestion() {
-  if (review && mistakes.length === 0) {
-    alert("復習完了！");
-    review = false;
-    current = 0;
-    showQuestion();
+// =========================
+// 問題表示（ランダム）
+// =========================
+function showQuestion(){
+  const list = reviewMode ? reviewList : words;
+
+  if(list.length === 0){
+    document.getElementById("word").innerText = "復習リストなし";
+    document.getElementById("read").innerText = "";
+    document.getElementById("answer").innerText = "";
     return;
   }
 
-  if (review) {
-    words.splice(0, words.length, ...mistakes);
-    mistakes = [];
+  // ランダム（連続防止）
+  do {
+    currentIndex = Math.floor(Math.random() * list.length);
+  } while (list.length > 1 && currentIndex === prevIndex);
+
+  prevIndex = currentIndex;
+
+  const current = list[currentIndex];
+
+  document.getElementById("word").innerText = current.q;
+  document.getElementById("read").innerText = "（" + current.r + "）";
+  document.getElementById("answer").innerText = current.a;
+  document.getElementById("answer").style.display = "none";
+}
+
+// =========================
+function showAnswer(){
+  document.getElementById("answer").style.display = "block";
+}
+
+// =========================
+// 判定
+// =========================
+function mark(isCorrect){
+  const list = reviewMode ? reviewList : words;
+  const current = list[currentIndex];
+
+  if(isCorrect){
+    correctSound.currentTime = 0;
+    correctSound.play();
+
+    if(reviewMode){
+      reviewList.splice(currentIndex,1);
+    }
+  } else {
+    wrongSound.currentTime = 0;
+    wrongSound.play();
+
+    if(!reviewMode){
+      if(!reviewList.find(w => w.q === current.q)){
+        reviewList.push(current);
+      }
+    }
   }
 
-  current++;
-  if (current >= words.length) current = 0;
+  updateReviewCount();
   showQuestion();
 }
 
-function reviewMode() {
-  review = true;
-  current = 0;
-  alert("間違えた問題だけ復習します");
+// =========================
+function updateReviewCount(){
+  document.getElementById("reviewCount").innerText = reviewList.length;
+}
+
+// =========================
+// モード切替
+// =========================
+function toggleMode(){
+  reviewMode = !reviewMode;
+  prevIndex = -1;
+
+  document.getElementById("modeTitle").innerText =
+    reviewMode ? "復習モード" : "通常モード";
+
+  document.body.style.background =
+    reviewMode ? "#000" : "linear-gradient(135deg, #1e1e2f, #2a2a40)";
+
   showQuestion();
 }
 
+// =========================
+// 初期化
+// =========================
+updateReviewCount();
 showQuestion();
+
 </script>
 
 </body>
