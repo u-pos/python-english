@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Python単語ゲーム</title>
+
+<style>
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: radial-gradient(circle at top, #1e1e2f, #0f0f1a);
+  color: white;
+  text-align: center;
+  margin: 0;
+}
+
+header {
+  padding: 20px;
+  background: #111;
+  display: flex;
+  justify-content: space-around;
+  font-size: 18px;
+}
+
+.container {
+  margin-top: 40px;
+}
+
+.card {
+  background: white;
+  color: black;
+  width: 500px;
+  margin: auto;
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+  transition: 0.3s;
+}
+
+.card.correct { background: #d4edda; }
+.card.wrong { background: #f8d7da; }
+
+.question { font-size: 32px; }
+.answer { font-size: 22px; opacity: 0; transition: 0.4s; }
+.answer.show { opacity: 1; }
+
+button {
+  margin: 10px;
+  padding: 12px 25px;
+  font-size: 16px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.show { background:#3498db; color:white;}
+.ok { background:#2ecc71; color:white;}
+.ng { background:#e74c3c; color:white;}
+.next { background:#f1c40f;}
+.review { background:#9b59b6; color:white;}
+
+.progress {
+  width: 500px;
+  height: 10px;
+  background: #333;
+  margin: 20px auto;
+  border-radius: 5px;
+}
+.progress-bar {
+  height: 100%;
+  background: #2ecc71;
+  width: 0%;
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+  <div>Lv: <span id="level">1</span></div>
+  <div>XP: <span id="xp">0</span></div>
+  <div>コンボ: <span id="combo">0</span></div>
+</header>
+
+<div class="container">
+
+<div class="card" id="card">
+  <div class="question" id="question"></div>
+  <div class="answer" id="answer"></div>
+</div>
+
+<div class="progress"><div class="progress-bar" id="bar"></div></div>
+
+<button class="show" onclick="showAnswer()">答えを見る</button><br>
+<div id="judge" style="display:none;">
+  <button class="ok" onclick="mark(true)">〇</button>
+  <button class="ng" onclick="mark(false)">✕</button>
+</div>
+
+<br>
+<button class="next" onclick="nextQ()">次へ</button>
+<button class="review" onclick="reviewMode()">復習</button>
+
+</div>
+
+<script>
+const words = [
+{q:"print（プリント）",a:"表示する"},
+{q:"input（インプット）",a:"入力する"},
+{q:"int（イント）",a:"数字にする"},
+{q:"str（ストリング）",a:"文字にする"},
+{q:"float（フロート）",a:"小数にする"},
+{q:"len（レン）",a:"長さ"},
+{q:"range（レンジ）",a:"範囲"},
+{q:"for（フォー）",a:"繰り返し"},
+{q:"while（ワイル）",a:"条件ループ"},
+{q:"if（イフ）",a:"もし"},
+{q:"elif（エリフ）",a:"それ以外でもし"},
+{q:"else（エルス）",a:"それ以外"},
+{q:"and（アンド）",a:"かつ"},
+{q:"or（オア）",a:"または"},
+{q:"not（ノット）",a:"否定"},
+{q:"in（イン）",a:"含む"},
+{q:"break（ブレイク）",a:"止める"},
+{q:"continue（コンティニュー）",a:"次へ"},
+{q:"def（デフ）",a:"関数"},
+{q:"return（リターン）",a:"戻す"},
+{q:"import（インポート）",a:"読み込む"},
+{q:"True（トゥルー）",a:"真"},
+{q:"False（フォルス）",a:"偽"},
+{q:"None（ナン）",a:"空"},
+{q:"append（アペンド）",a:"追加"},
+{q:"remove（リムーブ）",a:"削除"},
+{q:"pop（ポップ）",a:"取り出す"},
+{q:"sort（ソート）",a:"並べ替え"},
+{q:"reverse（リバース）",a:"逆順"},
+{q:"open（オープン）",a:"開く"},
+{q:"read（リード）",a:"読む"},
+{q:"write（ライト）",a:"書く"},
+{q:"close（クローズ）",a:"閉じる"},
+{q:"try（トライ）",a:"試す"},
+{q:"except（エクセプト）",a:"エラー処理"},
+{q:"finally（ファイナリー）",a:"最後"},
+{q:"class（クラス）",a:"設計図"},
+{q:"self（セルフ）",a:"自分"},
+{q:"map（マップ）",a:"まとめ処理"},
+{q:"filter（フィルター）",a:"条件抽出"},
+{q:"zip（ジップ）",a:"まとめる"},
+{q:"enumerate（イニュメレート）",a:"番号付き"}
+];
+
+let i=0, xp=0, combo=0, mistakes=[], review=false;
+
+function save(){
+ localStorage.setItem("xp",xp);
+ localStorage.setItem("combo",combo);
+}
+function load(){
+ xp=+localStorage.getItem("xp")||0;
+ combo=+localStorage.getItem("combo")||0;
+}
+load();
+
+function level(){
+ return Math.floor(xp/50)+1;
+}
+
+function showQ(){
+ document.getElementById("question").innerText=words[i].q;
+ document.getElementById("answer").classList.remove("show");
+ document.getElementById("judge").style.display="none";
+ updateUI();
+}
+
+function showAnswer(){
+ document.getElementById("answer").innerText=words[i].a;
+ document.getElementById("answer").classList.add("show");
+ document.getElementById("judge").style.display="block";
+}
+
+function sound(ok){
+ const ctx=new AudioContext();
+ const o=ctx.createOscillator();
+ o.frequency.value= ok?800:200;
+ o.connect(ctx.destination);
+ o.start();
+ setTimeout(()=>o.stop(),120);
+}
+
+function mark(ok){
+ const card=document.getElementById("card");
+ if(ok){
+  combo++;
+  xp+=10+combo*2;
+  sound(true);
+  card.className="card correct";
+ }else{
+  combo=0;
+  mistakes.push(words[i]);
+  sound(false);
+  card.className="card wrong";
+ }
+ save();
+ setTimeout(nextQ,400);
+}
+
+function nextQ(){
+ if(review && mistakes.length===0){
+  alert("復習完了");
+  review=false;
+ }
+ if(review){
+  words.splice(0,words.length,...mistakes);
+  mistakes=[];
+ }
+ i=(i+1)%words.length;
+ updateBar();
+ showQ();
+}
+
+function reviewMode(){
+ review=true;
+ i=0;
+ alert("間違いだけ復習");
+ showQ();
+}
+
+function updateUI(){
+ document.getElementById("xp").innerText=xp;
+ document.getElementById("combo").innerText=combo;
+ document.getElementById("level").innerText=level();
+}
+
+function updateBar(){
+ let p=(i/words.length)*100;
+ document.getElementById("bar").style.width=p+"%";
+}
+
+document.addEventListener("keydown",e=>{
+ if(e.key==="Enter") showAnswer();
+ if(e.key==="1") mark(true);
+ if(e.key==="2") mark(false);
+ if(e.key==="n") nextQ();
+});
+
+showQ();
+</script>
+
+</body>
+</html>
