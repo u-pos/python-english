@@ -13,9 +13,20 @@ body {
   text-align: center;
 }
 
+/* ミュートボタン */
+.muteBtn {
+  position: fixed;
+  top: 15px;
+  right: 20px;
+  background: #444;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
 .container {
   max-width: 900px;
-  margin: 50px auto;
+  margin: 60px auto;
 }
 
 .card {
@@ -50,6 +61,8 @@ button {
 
 <body>
 
+<div class="muteBtn" onclick="toggleMute()">🔊 音ON</div>
+
 <div class="container">
 <h2 id="modeTitle">通常モード</h2>
 <button class="switch" onclick="toggleMode()">モード切替</button>
@@ -60,9 +73,12 @@ button {
     <div class="read" id="read"></div>
     <div class="answer" id="answer"></div>
 
-    <button class="show" onclick="showAnswer()">答え</button><br>
-    <button class="correct" onclick="mark(true)">〇</button>
-    <button class="wrong" onclick="mark(false)">✕</button>
+    <button class="show" onclick="showAnswer()">答えを見る</button><br>
+
+    <div id="judgeButtons" style="display:none;">
+      <button class="correct" onclick="mark(true)">〇</button>
+      <button class="wrong" onclick="mark(false)">✕</button>
+    </div>
   </div>
 </div>
 
@@ -97,9 +113,10 @@ const baseWords = [
 // =================
 let normalQueue = [...baseWords];
 let reviewList = JSON.parse(localStorage.getItem("reviewList")) || [];
-
 let reviewMode = false;
 let currentWord;
+
+let isMuted = false;
 
 // =================
 // 音
@@ -110,13 +127,31 @@ const bgm = new Audio("bgm.mp3");
 bgm.loop = true;
 
 document.body.addEventListener("click",()=>{
- if(bgm.paused) bgm.play();
+ if(!isMuted && bgm.paused) bgm.play();
 },{once:true});
+
+// =================
+// ミュート
+// =================
+function toggleMute(){
+  isMuted = !isMuted;
+
+  document.querySelector(".muteBtn").innerText =
+    isMuted ? "🔇 ミュート" : "🔊 音ON";
+
+  if(isMuted){
+    bgm.pause();
+  }else{
+    bgm.play();
+  }
+}
 
 // =================
 // 表示
 // =================
 function showQuestion(){
+
+ document.getElementById("judgeButtons").style.display="none";
 
  if(reviewMode && reviewList.length===0){
    document.getElementById("gameArea").style.display="none";
@@ -142,6 +177,7 @@ function showQuestion(){
 // =================
 function showAnswer(){
  document.getElementById("answer").style.display="block";
+ document.getElementById("judgeButtons").style.display="block";
 }
 
 // =================
@@ -149,16 +185,19 @@ function showAnswer(){
 // =================
 function mark(isCorrect){
 
- if(isCorrect){
-   ok.currentTime=0; ok.play();
-
-   if(reviewMode){
-     reviewList.shift(); // 消す
+ if(!isMuted){
+   if(isCorrect){
+     ok.currentTime=0; ok.play();
+   }else{
+     ng.currentTime=0; ng.play();
    }
+ }
 
+ if(isCorrect){
+   if(reviewMode){
+     reviewList.shift();
+   }
  }else{
-   ng.currentTime=0; ng.play();
-
    if(!reviewMode){
      if(!reviewList.find(w=>w.q===currentWord.q)){
        reviewList.push(currentWord);
@@ -166,7 +205,6 @@ function mark(isCorrect){
    }
  }
 
- // 通常モードは後ろへ回す
  if(!reviewMode){
    normalQueue.push(normalQueue.shift());
  }
