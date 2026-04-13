@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Python単語トレーニング</title>
+<style>
+body {
+  font-family: sans-serif;
+  text-align: center;
+  padding: 40px;
+}
+.card {
+  font-size: 32px;
+  margin: 40px 0;
+}
+.answer {
+  font-size: 24px;
+  color: green;
+  display: none;
+}
+button {
+  font-size: 18px;
+  margin: 10px;
+  padding: 10px 20px;
+}
+</style>
+</head>
+<body>
+
+<h1>Python単語トレーニング</h1>
+
+<div class="card" id="question"></div>
+<div class="answer" id="answer"></div>
+
+<button onclick="showAnswer()">答えを見る</button><br>
+
+<div id="judgeButtons" style="display:none;">
+  <button onclick="mark(true)">〇 正解</button>
+  <button onclick="mark(false)">✕ 間違い</button>
+</div>
+
+<br>
+<button onclick="nextQuestion()">次へ</button>
+<button onclick="reviewMode()">復習モード</button>
+
+<script>
+const words = [
+  {q:"print（プリント）", a:"表示する"},
+  {q:"input（インプット）", a:"入力する"},
+  {q:"int（イント）", a:"数字にする"},
+  {q:"str（ストリング）", a:"文字にする"},
+  {q:"float（フロート）", a:"小数にする"},
+  {q:"len（レン）", a:"長さを数える"},
+  {q:"range（レンジ）", a:"範囲を作る"},
+  {q:"for（フォー）", a:"くりかえし"},
+  {q:"if（イフ）", a:"もし"},
+  {q:"elif（エリフ）", a:"それ以外でもし"},
+  {q:"else（エルス）", a:"それ以外"},
+  {q:"break（ブレイク）", a:"ループ終了"},
+  {q:"continue（コンティニュー）", a:"次へスキップ"},
+  {q:"def（デフ）", a:"関数を作る"},
+  {q:"return（リターン）", a:"戻す"}
+];
+
+let current = 0;
+let mistakes = [];
+let review = false;
+
+function showQuestion() {
+  document.getElementById("question").innerText = words[current].q;
+  document.getElementById("answer").style.display = "none";
+  document.getElementById("judgeButtons").style.display = "none";
+}
+
+function showAnswer() {
+  document.getElementById("answer").innerText = words[current].a;
+  document.getElementById("answer").style.display = "block";
+  document.getElementById("judgeButtons").style.display = "block";
+}
+
+function mark(correct) {
+  if (!correct) {
+    mistakes.push(words[current]);
+  }
+  nextQuestion();
+}
+
+function nextQuestion() {
+  if (review && mistakes.length === 0) {
+    alert("復習完了！");
+    review = false;
+    current = 0;
+    showQuestion();
+    return;
+  }
+
+  if (review) {
+    words.splice(0, words.length, ...mistakes);
+    mistakes = [];
+  }
+
+  current++;
+  if (current >= words.length) current = 0;
+  showQuestion();
+}
+
+function reviewMode() {
+  review = true;
+  current = 0;
+  alert("間違えた問題だけ復習します");
+  showQuestion();
+}
+
+showQuestion();
+</script>
+
+</body>
+</html>
